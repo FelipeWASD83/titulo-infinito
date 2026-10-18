@@ -1,0 +1,12 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+    }
+}
+
+plugins {
+    // Baixa sozinho o JDK 21 que o NeoForge 1.21.1 exige (a máquina só tem o 25).
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+rootProject.name = 'titulo-infinito'

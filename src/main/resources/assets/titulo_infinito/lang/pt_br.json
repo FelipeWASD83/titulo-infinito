@@ -1,0 +1,13 @@
+{
+  "titulo_infinito.configuration.title": "MC:INFINITO: logo do título",
+  "titulo_infinito.configuration.posicaoX": "Posição horizontal",
+  "titulo_infinito.configuration.posicaoX.tooltip": "Desloca o logo para a direita (positivo) ou para a esquerda (negativo), em pixels da interface.",
+  "titulo_infinito.configuration.posicaoY": "Posição vertical",
+  "titulo_infinito.configuration.posicaoY.tooltip": "Desloca o logo para baixo (positivo) ou para cima (negativo), em pixels da interface.",
+  "titulo_infinito.configuration.escala": "Tamanho",
+  "titulo_infinito.configuration.escala.tooltip": "1.0 é a largura do logo original do Minecraft. Cresce a partir do topo, no centro.",
+  "titulo_infinito.configuration.animar": "Animar as cores",
+  "titulo_infinito.configuration.animar.tooltip": "Faz o arco-íris do INFINITO correr e as estrelas piscarem.",
+  "titulo_infinito.configuration.segundosPorVolta": "Segundos por volta",
+  "titulo_infinito.configuration.segundosPorVolta.tooltip": "Quanto tempo o arco-íris leva para dar uma volta inteira. Menor é mais rápido."
+}

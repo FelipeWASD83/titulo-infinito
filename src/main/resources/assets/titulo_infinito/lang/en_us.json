@@ -1,0 +1,13 @@
+{
+  "titulo_infinito.configuration.title": "MC:INFINITO: title logo",
+  "titulo_infinito.configuration.posicaoX": "Horizontal position",
+  "titulo_infinito.configuration.posicaoX.tooltip": "Moves the logo right (positive) or left (negative), in GUI pixels.",
+  "titulo_infinito.configuration.posicaoY": "Vertical position",
+  "titulo_infinito.configuration.posicaoY.tooltip": "Moves the logo down (positive) or up (negative), in GUI pixels.",
+  "titulo_infinito.configuration.escala": "Size",
+  "titulo_infinito.configuration.escala.tooltip": "1.0 is the width of the original Minecraft logo. Grows from the top center.",
+  "titulo_infinito.configuration.animar": "Animate colors",
+  "titulo_infinito.configuration.animar.tooltip": "Makes the INFINITO rainbow flow and the stars twinkle.",
+  "titulo_infinito.configuration.segundosPorVolta": "Seconds per cycle",
+  "titulo_infinito.configuration.segundosPorVolta.tooltip": "How long the rainbow takes to go around once. Lower is faster."
+}

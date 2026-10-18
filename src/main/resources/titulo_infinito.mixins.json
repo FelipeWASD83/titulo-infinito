@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.tituloinfinito.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "LogoRendererMixin",
+    "SplashRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
