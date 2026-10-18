@@ -26,7 +26,10 @@ embaixo**, nas cores do Avaritia, para o modpack **MC:INFINITO** (a instância d
   são blocos deitados numa grade (traço de 3 colunas, 1 de espaço, 10 meias-linhas), a fonte foi tirada do próprio
   logo "desentortado" para a planta. Cada pixel lança um raio: topo = face colorida, frente = faixa cósmica,
   paredes dos lados = preto, como no vanilla. `--conferir <jar>` renderiza o MINECRAFT com a mesma câmera e compara
-  com o original (98,6% de silhueta igual em 17/10/2026; a diferença são as rachaduras de pedra, não modeladas).
+  com o original (99,2% de silhueta igual em 17/10/2026; a diferença são as rachaduras de pedra, não modeladas).
+  O contorno preto é geométrico, de cantos vivos como o do vanilla (1.1.1; antes era desfoque e saía redondo):
+  cada bloco da grade projetado vira um polígono convexo, afastado `CONTORNO` com os cantos em ponta, e a união é a
+  borda.
   Sem argumento, grava os quadros e o `infinito.json` no mod; `--previa <jar>` também faz PNG e WebP animado em
   `ferramentas/saida` (fora do git). Leva ~1 min.
 - **Como o INFINITO fica de baixo:** é a mesma cena espelhada. A grade da fonte vira de cabeça para baixo, a

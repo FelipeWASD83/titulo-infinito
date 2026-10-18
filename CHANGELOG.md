@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1 (17/10/2026)
+
+**Corrigido**
+- A borda preta do INFINITO tinha os cantos arredondados; agora tem cantos vivos, como a do MINECRAFT.
+
 ## 1.1.0 (17/10/2026)
 
 **Mudou**

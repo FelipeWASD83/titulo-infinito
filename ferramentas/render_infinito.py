@@ -170,13 +170,83 @@ def lancar_raios(palavra, x0, y0, largura, altura, escala, passos=160, cam=CAM_L
     return {"tipo": tipo, "X": X_hit, "Z": Z_hit, "v": v_hit, "borda": borda, "py": np.broadcast_to(py[:, None], (h, w))}
 
 
-def contorno(alfa, raio_px):
-    """Contorno preto arredondado em volta de tudo (o logo vanilla tem uns 10 unidades)."""
-    img = Image.fromarray((alfa * 255).astype(np.uint8))
-    r = max(1, int(round(raio_px)))
-    # desfoque + corte: com sigma 0,55 r e corte em 3,4% a borda anda r pixels e os cantos saem arredondados
-    borrado = np.array(img.filter(ImageFilter.GaussianBlur(r * 0.55))).astype(float) / 255
-    return np.maximum(np.clip((borrado - 0.034) * 40, 0, 1), alfa)
+def _casco_convexo(pts):
+    pts = sorted(set(pts))
+    if len(pts) < 3:
+        return pts
+
+    def giro(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    baixo, cima = [], []
+    for p in pts:
+        while len(baixo) >= 2 and giro(baixo[-2], baixo[-1], p) <= 0:
+            baixo.pop()
+        baixo.append(p)
+    for p in reversed(pts):
+        while len(cima) >= 2 and giro(cima[-2], cima[-1], p) <= 0:
+            cima.pop()
+        cima.append(p)
+    return baixo[:-1] + cima[:-1]
+
+
+def _area(poli):
+    return abs(sum(poli[i][0] * poli[(i + 1) % len(poli)][1] - poli[(i + 1) % len(poli)][0] * poli[i][1]
+                   for i in range(len(poli)))) / 2
+
+
+def _deslocar_com_ponta(poli, d, limite=4.0):
+    """Afasta cada lado de um polígono convexo (anti-horário) por d e junta os cantos em ponta, como o contorno
+    de um programa de vetor; ponta mais longa que limite*d vira chanfro."""
+    n = len(poli)
+    linhas = []
+    for i in range(n):
+        (x1, y1), (x2, y2) = poli[i], poli[(i + 1) % n]
+        ex, ey = x2 - x1, y2 - y1
+        comp = math.hypot(ex, ey) or 1e-9
+        nx, ny = ey / comp, -ex / comp          # normal para fora num polígono anti-horário (y para baixo)
+        linhas.append(((x1 + nx * d, y1 + ny * d), (ex, ey), (nx, ny)))
+    saida = []
+    for i in range(n):
+        (pa, da, na), (pb, db, nb) = linhas[i - 1], linhas[i]
+        cruz = da[0] * db[1] - da[1] * db[0]
+        canto = poli[i]
+        if abs(cruz) < 1e-9:
+            saida.append((canto[0] + nb[0] * d, canto[1] + nb[1] * d))
+            continue
+        t = ((pb[0] - pa[0]) * db[1] - (pb[1] - pa[1]) * db[0]) / cruz
+        q = (pa[0] + da[0] * t, pa[1] + da[1] * t)
+        if math.hypot(q[0] - canto[0], q[1] - canto[1]) > limite * d:
+            saida.append((canto[0] + na[0] * d, canto[1] + na[1] * d))
+            saida.append((canto[0] + nb[0] * d, canto[1] + nb[1] * d))
+        else:
+            saida.append(q)
+    return saida
+
+
+def contorno(palavra, cam, x0, y0, escala, forma, raio):
+    """Contorno preto de cantos vivos, como o do logo vanilla: cada bloco da grade, projetado, é um polígono
+    convexo; cada um é afastado por `raio` (unidades do logo) com os cantos em ponta, e a união deles é o contorno.
+    Desenhado na resolução superamostrada; a redução no fim suaviza a borda sem arredondar o canto."""
+    from PIL import ImageDraw
+    img = Image.new("L", (forma[1], forma[0]))
+    desenho = ImageDraw.Draw(img)
+    k = palavra.k
+    for lin, col in zip(*np.nonzero(palavra.grade)):
+        xa = palavra.x_esq + col * k * UNID
+        za = palavra.z_perto + (9 - lin) * k * DZ
+        cantos = []
+        for X in (xa, xa + k * UNID):
+            for Z in (za, za + k * DZ):
+                for Y in (-ALTURA, -ALTURA - palavra.espessura):
+                    x, y = projetar(X, Y, Z, cam)
+                    cantos.append(((x - x0) * escala, (y - y0) * escala))
+        casco = _casco_convexo(cantos)
+        poli = _deslocar_com_ponta(casco, raio * escala)
+        if _area(poli) < _area(casco):     # sentido trocado: a normal apontou para dentro
+            poli = _deslocar_com_ponta(casco[::-1], raio * escala)
+        desenho.polygon(poli, fill=255)
+    return np.array(img).astype(float) / 255
 
 
 def reduzir(rgba, fator):
@@ -219,8 +289,7 @@ def conferir(jar):
     p = Palavra("MINECRAFT", X0_MINECRAFT, Z_PERTO, 1.0)
     r = lancar_raios(p, 0, 0, 1024, 176, SS)
     rgba = pintar_vanilla(r)
-    a = contorno(rgba[..., 3], 10 * SS)
-    rgba[..., 3] = a
+    rgba[..., 3] = np.maximum(contorno(p, CAM_LOGO, 0, 0, SS, rgba.shape[:2], 10), rgba[..., 3])
     final = reduzir(rgba, SS)
     van = np.array(logo_vanilla(jar).crop((0, 0, 1024, 176))).astype(float) / 255
     meu = final[..., 3] > 0.5
@@ -378,6 +447,7 @@ def renderizar_quadros(previa_jar=None):
     x0, y0, lw, lh = janela(p, raio, CAM_INF)
     escala = ESCALA_SAIDA * SS
     r = lancar_raios(p, x0, y0, lw, lh, escala, cam=CAM_INF)
+    r["contorno"] = contorno(p, CAM_INF, x0, y0, escala, r["tipo"].shape, raio)
     # vira de cabeça para baixo: a janela passa a começar no espelho do que era o fim dela
     r = {chave: np.flipud(valor) for chave, valor in r.items()}
     y0 = int(round(espelhar_y(y0 + lh)))
@@ -391,7 +461,7 @@ def renderizar_quadros(previa_jar=None):
     iy = np.clip((fy * RR).astype(int), 0, racha_e.shape[0] - 1)
     e = np.where(tipo == TOPO, racha_e[iy, ix], 0)[..., None]
     c = np.where(tipo == TOPO, racha_c[iy, ix], 0)[..., None]
-    alfa = contorno((tipo > 0).astype(float), raio * escala)
+    alfa = np.maximum(r["contorno"], (tipo > 0).astype(float))
     topo, frente = tipo == TOPO, tipo == FRENTE
     borda = r["borda"][..., None]
     v = r["v"][..., None]
