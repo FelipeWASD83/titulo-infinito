@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0 (17/10/2026)
+
+**Mudou**
+- O INFINITO agora é visto de baixo, como a segunda linha do logo do Minecraft Mini Series: a espessura cósmica
+  fica em cima, encostada no MINECRAFT, e a face colorida fica embaixo, afunilando para baixo.
+- Letras mais largas e mais achatadas, com a perspectiva mais forte da referência: o INFINITO ocupa uns 60% da
+  largura do MINECRAFT (antes uns 55%) e as letras das pontas inclinam bem mais.
+- A quina entre a espessura e a face ganhou um brilho branco mais forte, como no print.
+
 ## 1.0.0 (17/10/2026)
 
 **Novo**

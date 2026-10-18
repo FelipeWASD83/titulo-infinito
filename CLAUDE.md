@@ -7,8 +7,10 @@ embaixo**, nas cores do Avaritia, para o modpack **MC:INFINITO** (a instância d
 
 ## Decisões dele
 
-- O visual segue o print do "Minecraft Mini Series" que ele mandou: MINECRAFT original em cima, a segunda palavra
-  menor, centralizada, com metade da barra de cima escondida atrás do MINECRAFT.
+- O visual segue o print do "Minecraft Mini Series" que ele mandou: MINECRAFT original em cima e a segunda palavra
+  centralizada embaixo, **vista de baixo** (1.1.0, pedido dele: "virado para baixo em vez de para cima"): a
+  espessura fica em cima, encostada no MINECRAFT, e a face da letra embaixo, afunilando para baixo. Na 1.0.0 ela
+  era vista de cima, igual ao MINECRAFT, e ele não gostou.
 - **O INFINITO é 3D de verdade, renderizado fora do jogo** ("faz o 3D e depois renderiza a imagem para não pesar
   no jogo"). A primeira tentativa, que recortava letras do logo vanilla e colava, ficou errada: o logo tem
   perspectiva, e letra tirada de uma posição fica com a lateral virada para o lado errado em outra.
@@ -27,6 +29,13 @@ embaixo**, nas cores do Avaritia, para o modpack **MC:INFINITO** (a instância d
   com o original (98,6% de silhueta igual em 17/10/2026; a diferença são as rachaduras de pedra, não modeladas).
   Sem argumento, grava os quadros e o `infinito.json` no mod; `--previa <jar>` também faz PNG e WebP animado em
   `ferramentas/saida` (fora do git). Leva ~1 min.
+- **Como o INFINITO fica de baixo:** é a mesma cena espelhada. A grade da fonte vira de cabeça para baixo, a
+  palavra é renderizada vista de cima e a imagem é virada em torno de `ESPELHO_Y`, então o texto lê normal. Ele tem
+  **câmera própria** (`CAM_INF`): no print a segunda linha tem perspectiva mais forte que a primeira (ponto de fuga
+  a ~850 da borda de perto, contra ~1500 no MINECRAFT), e com a câmera do logo não dá para ter essa inclinação, a
+  largura (~81% da letra de cima) e a face achatada (espessura ~38, face ~68 na escala em que a face do MINECRAFT
+  tem 121) ao mesmo tempo. `montar_infinito` acha o nadir, a distância, a escala e a espessura que batem com essas
+  medidas (constantes `LARGURA_ALVO`, `DIST_FUGA`, `ESPESSURA_TOPO_Y`, `FACE_PERTO_Y`, `FACE_LONGE_Y`).
 - `assets/titulo_infinito/infinito.json`: onde o INFINITO fica em relação ao logo (unidades do minecraft.png, 4 por
   pixel de interface) e o tamanho dos quadros. Gerado pela ferramenta; não editar à mão.
 - `mixin/LogoRendererMixin`: entra no começo do `renderLogo(GuiGraphics, int, float, int)` e desenha tudo
@@ -54,8 +63,9 @@ Base de build copiada da `bancada-minecraft` (Gradle, NeoForge 21.1.252, Parchme
 - **Outros mods mexem no mesmo método:** o Aether (logo e splash) e o Aquamirae (logo) usam `@WrapOperation` no
   `blit` de dentro do `renderLogo`. O mod cancela o método antes, então os deles aplicam sem erro e não rodam (o
   menu do Aether está desligado no pack: `cumulus_menus-client.toml`, "Active Menu" = minecraft).
-- No GUI Scale automático dele (6 em 3440 x 1440, 573 x 240 de interface) o logo termina na linha ~103 e o
-  primeiro botão começa na 108. Aumentar a escala pela config faz o logo encostar nos botões.
-- Mudou `TOPO_Y`/`BASE_Y` ou a câmera na ferramenta? Os quadros e o `infinito.json` mudam juntos; rodar a
+- No GUI Scale automático dele (6 em 3440 x 1440, 573 x 240 de interface) o logo termina na linha ~101 e o
+  primeiro botão começa na 108.
+- Ao trocar de versão, apagar o jar velho da pasta `mods`: dois jars com o mesmo id de mod não deixam o jogo abrir. Aumentar a escala pela config faz o logo encostar nos botões.
+- Mudou as medidas do INFINITO ou alguma câmera na ferramenta? Os quadros e o `infinito.json` mudam juntos; rodar a
   ferramenta antes do build.
 - Script de edição com barra invertida não vai por heredoc no Bash (comeu a barra duas vezes aqui).

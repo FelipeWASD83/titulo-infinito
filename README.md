@@ -1,8 +1,9 @@
 # MC:INFINITO: logo do título (mod de Minecraft)
 
 Troca o logo da tela de título do Minecraft por **MINECRAFT com INFINITO embaixo**. O INFINITO é um modelo 3D na
-mesma fonte e na mesma perspectiva do logo original, pintado com o arco-íris do bloco de infinito do Avaritia e com a
-frente cósmica cheia de estrelas. As cores correm pelas letras e as estrelas piscam. Feito para o modpack
+mesma fonte do logo original, visto de baixo como a segunda linha do logo do Minecraft Mini Series (a espessura em
+cima, encostada no MINECRAFT, e a face embaixo), pintado com o arco-íris do bloco de infinito do Avaritia e com a
+espessura cósmica cheia de estrelas. As cores correm pelas letras e as estrelas piscam. Feito para o modpack
 MC:INFINITO (Minecraft 1.21.1, NeoForge). Só roda no cliente: não precisa estar no servidor.
 
 ## Ajustar posição, tamanho e animação

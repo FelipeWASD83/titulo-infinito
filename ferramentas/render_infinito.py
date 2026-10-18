@@ -34,12 +34,19 @@ SAIDA_MOD = RAIZ / "src/main/resources/assets/titulo_infinito/textures/gui/infin
 SAIDA_INFO = RAIZ / "src/main/resources/assets/titulo_infinito/infinito.json"
 SAIDA_RASCUNHO = RAIZ / "ferramentas/saida"
 
+class Camera:
+    """Câmera inclinada para baixo, definida pelos dois pontos de fuga na vertical que passa por cx: o horizonte
+    (para onde vai a profundidade) e o nadir (para onde vão as verticais), em coordenadas do logo."""
+
+    def __init__(self, cx, cy, y_horizonte, y_nadir):
+        self.cx, self.cy = cx, cy
+        self.foco = math.sqrt((cy - y_horizonte) * (y_nadir - cy))
+        incl = math.atan((cy - y_horizonte) / self.foco)
+        self.sen, self.cos = math.sin(incl), math.cos(incl)
+
+
 # --- câmera calibrada no logo vanilla (coordenadas do logo) ---
-CX, CY = 528.0, 64.0
-Y_HORIZONTE, Y_NADIR = -1470.0, 838.0
-FOCO = math.sqrt((CY - Y_HORIZONTE) * (Y_NADIR - CY))
-INCL = math.atan((CY - Y_HORIZONTE) / FOCO)
-SEN, COS = math.sin(INCL), math.cos(INCL)
+CAM_LOGO = Camera(528.0, 64.0, -1470.0, 838.0)
 ALTURA = 100.0                      # câmera acima do topo das letras (unidade do mundo)
 Z_PERTO, Z_LONGE = 62.3588, 78.9094  # profundidade das 10 meias-linhas do MINECRAFT
 ESPESSURA = 7.95                    # altura dos blocos
@@ -88,11 +95,14 @@ def grade_da_palavra(palavra):
 class Palavra:
     """Uma palavra deitada no plano do topo: canto esquerdo em x_esq, borda de perto em z_perto, escala k."""
 
-    def __init__(self, palavra, x_esq, z_perto, k):
+    def __init__(self, palavra, x_esq, z_perto, k, espessura=None, de_ponta_cabeca=False):
         self.grade = grade_da_palavra(palavra)
+        if de_ponta_cabeca:
+            # a imagem vai ser virada de cabeça para baixo depois; a grade vira antes para o texto ler normal
+            self.grade = self.grade[::-1]
         self.x_esq, self.z_perto, self.k = x_esq, z_perto, k
         self.ncol = self.grade.shape[1]
-        self.espessura = ESPESSURA * k
+        self.espessura = ESPESSURA * k if espessura is None else espessura
 
     def dentro(self, X, Z):
         col = np.floor((X - self.x_esq) / (self.k * UNID)).astype(int)
@@ -107,28 +117,28 @@ class Palavra:
         return (X - self.x_esq) / (self.k * UNID), 10 - (Z - self.z_perto) / (self.k * DZ)
 
 
-def projetar(X, Y, Z):
-    pf = -Y * SEN + Z * COS
-    pd = -Y * COS - Z * SEN
-    return CX + FOCO * X / pf, CY + FOCO * pd / pf
+def projetar(X, Y, Z, cam=CAM_LOGO):
+    pf = -Y * cam.sen + Z * cam.cos
+    pd = -Y * cam.cos - Z * cam.sen
+    return cam.cx + cam.foco * X / pf, cam.cy + cam.foco * pd / pf
 
 
-def z_na_linha(y, Y=-ALTURA):
-    k = (y - CY) / FOCO
-    return (-Y * COS + k * Y * SEN) / (k * COS + SEN)
+def z_na_linha(y, Y=-ALTURA, cam=CAM_LOGO):
+    k = (y - cam.cy) / cam.foco
+    return (-Y * cam.cos + k * Y * cam.sen) / (k * cam.cos + cam.sen)
 
 
-def x_na_coluna(x, Z, Y=-ALTURA):
-    return (x - CX) * (-Y * SEN + Z * COS) / FOCO
+def x_na_coluna(x, Z, Y=-ALTURA, cam=CAM_LOGO):
+    return (x - cam.cx) * (-Y * cam.sen + Z * cam.cos) / cam.foco
 
 
-def lancar_raios(palavra, x0, y0, largura, altura, escala, passos=160):
+def lancar_raios(palavra, x0, y0, largura, altura, escala, passos=160, cam=CAM_LOGO):
     """Para cada pixel da janela (em coordenadas do logo), acha a face que o raio acerta."""
     w, h = int(round(largura * escala)), int(round(altura * escala))
     px = x0 + (np.arange(w) + 0.5) / escala
     py = y0 + (np.arange(h) + 0.5) / escala
-    A, B = np.meshgrid((px - CX) / FOCO, (py - CY) / FOCO)
-    dx, dy, dz = A, -SEN - B * COS, COS - B * SEN
+    A, B = np.meshgrid((px - cam.cx) / cam.foco, (py - cam.cy) / cam.foco)
+    dx, dy, dz = A, -cam.sen - B * cam.cos, cam.cos - B * cam.sen
     tipo = np.zeros((h, w), np.uint8)
     X_hit = np.zeros((h, w))
     Z_hit = np.zeros((h, w))
@@ -239,27 +249,72 @@ PALAVRA = "INFINITO"
 QUADROS = 48
 ESCALA_SAIDA = 1.5     # pixels por unidade do logo: 1536 px para os 256 de GUI, 6 px por pixel de GUI no PC dele
 SS = 3                 # superamostragem
-# medido no print de referência: a segunda linha tem ~77% da altura e metade da barra de cima fica atrás da primeira
-TOPO_Y, BASE_Y = 165.0, 258.0
+# Como no print de referência, a segunda linha é vista DE BAIXO: a face grande é a de baixo do bloco e afunila para
+# baixo, e a espessura aparece em cima, encostada no MINECRAFT. Isso é a mesma cena espelhada: renderiza vista de
+# cima com a câmera do logo e vira a imagem em torno de ESPELHO_Y.
+# Medidas da referência, na escala do logo (face do MINECRAFT = 121): letras a ~81% da largura das de cima (o
+# INFINITO tem 53 colunas da fonte, então ~600 de largura), espessura ~38 e face ~68, bem mais achatada que a de
+# cima: a palavra é vista mais de raspão. A espessura começa logo abaixo da faixa do MINECRAFT.
+LARGURA_ALVO = 0.81 * 1024 * 53 / 71 - 18
+ESPESSURA_TOPO_Y, FACE_PERTO_Y, FACE_LONGE_Y = 166.0, 206.0, 274.0
+CONTORNO = 8.0
+ESPELHO_Y = None   # calculado em montar_infinito
+
+
+def espelhar_y(y):
+    return 2 * ESPELHO_Y - y
+
+
+def _buscar(f, lo, hi, alvo, crescente):
+    for _ in range(80):
+        meio = (lo + hi) / 2
+        if (f(meio) < alvo) == crescente:
+            lo = meio
+        else:
+            hi = meio
+    return (lo + hi) / 2
+
+
+# Na referência a segunda linha tem perspectiva mais forte que a primeira: o ponto de fuga da face fica a ~850 da
+# borda de perto (no MINECRAFT fica a ~1500). Com a câmera do logo não dá para ter essa inclinação, essa largura e
+# essa face achatada ao mesmo tempo, então o INFINITO tem câmera própria, calibrada pelas três medidas.
+DIST_FUGA = 850.0
+CAM_INF = None     # calculada em montar_infinito
 
 
 def montar_infinito():
-    z_perto = z_na_linha(BASE_Y)
-    z_longe = z_na_linha(TOPO_Y)
-    k = (z_longe - z_perto) / (10 * DZ)
+    global ESPELHO_Y, CAM_INF
     ncol = grade_da_palavra(PALAVRA).shape[1]
+    altura_face = FACE_LONGE_Y - FACE_PERTO_Y
+    y_horizonte = CAM_LOGO.cy - 1534.0
+    y_perto = y_horizonte + DIST_FUGA      # na imagem ainda sem virar; a câmera fica centrada nessa linha
+
+    def montar(y_nadir):
+        cam = Camera(CAM_LOGO.cx, y_perto, y_horizonte, y_nadir)
+        z = z_na_linha(y_perto, cam=cam)
+        # escala do bloco que dá a largura pedida na borda de perto, a essa distância
+        k = LARGURA_ALVO * (ALTURA * cam.sen + z * cam.cos) / (cam.foco * ncol * UNID)
+        face = y_perto - projetar(0, -ALTURA, z + 10 * k * DZ, cam)[1]
+        return cam, z, k, face
+
+    # nadir mais longe = câmera mais de raspão = face mais baixa para a mesma largura
+    y_nadir = _buscar(lambda yn: montar(yn)[3], y_perto + 50, y_perto + 20000, altura_face, crescente=False)
+    CAM_INF, z_perto, k, _ = montar(y_nadir)
+    ESPELHO_Y = (FACE_PERTO_Y + y_perto) / 2
+    x_meio = x_na_coluna(512, z_perto, cam=CAM_INF)
+    alvo = espelhar_y(ESPESSURA_TOPO_Y)
+    espessura = _buscar(lambda t: projetar(x_meio, -ALTURA - t, z_perto, CAM_INF)[1], 0.0, 5000.0, alvo, crescente=True)
     largura = ncol * k * UNID
-    x_esq = x_na_coluna(512, z_perto) - largura / 2
-    return Palavra(PALAVRA, x_esq, z_perto, k)
+    return Palavra(PALAVRA, x_meio - largura / 2, z_perto, k, espessura=espessura, de_ponta_cabeca=True)
 
 
-def janela(p, raio):
+def janela(p, raio, cam=CAM_LOGO):
     """Retângulo (em unidades do logo) que contém a palavra com contorno, arredondado para a grade de saída."""
     xs, ys = [], []
     for X in (p.x_esq, p.x_esq + p.ncol * p.k * UNID):
         for Z in (p.z_perto, p.z_perto + 10 * p.k * DZ):
             for Y in (-ALTURA, -ALTURA - p.espessura):
-                x, y = projetar(X, Y, Z)
+                x, y = projetar(X, Y, Z, cam)
                 xs.append(x)
                 ys.append(y)
     m = raio + 3
@@ -319,11 +374,14 @@ def cor_arco_iris(t, fase, profundidade):
 
 def renderizar_quadros(previa_jar=None):
     p = montar_infinito()
-    raio = 10 * (BASE_Y - TOPO_Y) / 121           # contorno proporcional ao tamanho, como no vanilla
-    x0, y0, lw, lh = janela(p, raio)
+    raio = CONTORNO
+    x0, y0, lw, lh = janela(p, raio, CAM_INF)
     escala = ESCALA_SAIDA * SS
-    print(f"INFINITO: escala {p.k:.3f}, janela do logo x={x0} y={y0} {lw}x{lh}")
-    r = lancar_raios(p, x0, y0, lw, lh, escala)
+    r = lancar_raios(p, x0, y0, lw, lh, escala, cam=CAM_INF)
+    # vira de cabeça para baixo: a janela passa a começar no espelho do que era o fim dela
+    r = {chave: np.flipud(valor) for chave, valor in r.items()}
+    y0 = int(round(espelhar_y(y0 + lh)))
+    print(f"INFINITO: escala {p.k:.3f}, espessura {p.espessura:.2f}, janela do logo x={x0} y={y0} {lw}x{lh}")
     tipo = r["tipo"]
     fx, fy = p.fonte_xy(r["X"], r["Z"])
     t = np.clip(fx / p.ncol, 0, 1)
@@ -357,7 +415,7 @@ def renderizar_quadros(previa_jar=None):
     for n in range(QUADROS):
         fase = n / QUADROS
         cor = cor_arco_iris(t, fase, prof)
-        cor = np.where(borda, cor + (1 - cor) * 0.5, cor)
+        cor = np.where(borda, cor + (1 - cor) * 0.8, cor)   # quina clara entre a espessura e a face, como no print
         cor = cor * (1 - 0.38 * e) + (1 - cor) * 0.4 * c
         tinta = cor_arco_iris(t, fase, np.full_like(t, 0.5))
         cosmico = fundo_cosmico + 0.12 * tinta
